@@ -1,0 +1,18 @@
+
+This complete hostel allocation system includes:
+
+1. **Beautiful UI** with gradients, animations, and modern design
+2. **Complete CRUD operations** for students and rooms
+3. **Smart allocation system** with gender-based filtering
+4. **Real-time statistics** on the dashboard
+5. **Progress bars** showing room occupancy
+6. **Responsive design** that works on all devices
+7. **Flash messages** for user feedback
+8. **AJAX-based dynamic room filtering**
+9. **Allocation history tracking**
+10. **Deallocation functionality**
+
+To run the system:
+```bash
+pip install flask flask-sqlalchemy
+python app.py

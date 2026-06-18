@@ -1,0 +1,91 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Hostel Allocation System{% endblock %}
+
+{% block content %}
+<h2 class="page-title">Dashboard Overview</h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-users fa-2x mb-3"></i>
+            <h3>{{ stats.total_students }}</h3>
+            <p>Total Students</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-door-open fa-2x mb-3"></i>
+            <h3>{{ stats.total_rooms }}</h3>
+            <p>Total Rooms</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-check-circle fa-2x mb-3"></i>
+            <h3>{{ stats.allocated_students }}</h3>
+            <p>Allocated Students</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-home fa-2x mb-3"></i>
+            <h3>{{ stats.available_rooms }}</h3>
+            <p>Available Rooms</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-chart-pie fa-2x mb-3"></i>
+            <h3>{{ stats.occupancy_rate }}%</h3>
+            <p>Occupancy Rate</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <i class="fas fa-bed fa-2x mb-3"></i>
+            <h3>{{ stats.total_occupied }}/{{ stats.total_capacity }}</h3>
+            <p>Occupied/Capacity</p>
+        </div>
+    </div>
+</div>
+
+<div class="content-card">
+    <h4 style="color: #667eea; margin-bottom: 20px;">
+        <i class="fas fa-clock"></i> Recent Allocations
+    </h4>
+    
+    {% if recent_allocations %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Room</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for allocation in recent_allocations %}
+                <tr>
+                    <td>{{ allocation.student.name }} ({{ allocation.student.roll_number }})</td>
+                    <td>{{ allocation.room.room_number }} - {{ allocation.room.block }} Block</td>
+                    <td>{{ allocation.allocation_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="badge bg-success">{{ allocation.status }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No allocations yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

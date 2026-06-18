@@ -1,0 +1,65 @@
+<!-- templates/edit_student.html -->
+{% extends "base.html" %}
+
+{% block title %}Edit Student - Hostel Allocation System{% endblock %}
+
+{% block content %}
+<h2 class="page-title">Edit Student</h2>
+
+<div class="content-card">
+    <form method="POST">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" name="name" value="{{ student.name }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Roll Number</label>
+                <input type="text" class="form-control" value="{{ student.roll_number }}" readonly>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" value="{{ student.email }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-control" name="phone" value="{{ student.phone }}">
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Gender</label>
+                <select class="form-control" name="gender" required>
+                    <option value="Male" {% if student.gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if student.gender == 'Female' %}selected{% endif %}>Female</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Course</label>
+                <input type="text" class="form-control" name="course" value="{{ student.course }}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Year</label>
+                <select class="form-control" name="year" required>
+                    {% for i in range(1, 5) %}
+                    <option value="{{ i }}" {% if student.year == i %}selected{% endif %}>{{ i }}st Year</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Update Student
+            </button>
+            <a href="{{ url_for('students') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

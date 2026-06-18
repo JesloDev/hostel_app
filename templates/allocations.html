@@ -1,0 +1,66 @@
+<!-- templates/allocations.html -->
+{% extends "base.html" %}
+
+{% block title %}Allocations - Hostel Allocation System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title">Room Allocations</h2>
+    <a href="{{ url_for('allocate_room') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Allocation
+    </a>
+</div>
+
+<div class="content-card">
+    {% if allocations %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Roll Number</th>
+                    <th>Room</th>
+                    <th>Block</th>
+                    <th>Allocation Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for allocation in allocations %}
+                <tr>
+                    <td>{{ allocation.student.name }}</td>
+                    <td>{{ allocation.student.roll_number }}</td>
+                    <td>{{ allocation.room.room_number }}</td>
+                    <td>{{ allocation.room.block }}</td>
+                    <td>{{ allocation.allocation_date.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        <span class="badge {% if allocation.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ allocation.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if allocation.status == 'Active' %}
+                        <a href="{{ url_for('deallocate_room', allocation_id=allocation.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to deallocate?')">
+                            <i class="fas fa-times"></i> Deallocate
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-clipboard-list fa-3x mb-3" style="color: #667eea;"></i>
+        <h4>No Allocations Found</h4>
+        <p class="text-muted">Start allocating rooms to students!</p>
+        <a href="{{ url_for('allocate_room') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Allocation
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
