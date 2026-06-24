@@ -1,7 +1,8 @@
-# seed.py
+# seed.py - PostgreSQL Compatible Version
 from app import app, db, Student, Room, Allocation
 from datetime import datetime, timedelta
 import random
+import os
 
 # Sample data
 FIRST_NAMES = [
@@ -37,12 +38,18 @@ COURSES = [
     'Law', 'Medicine', 'Architecture', 'Design', 'Education'
 ]
 
-def random_date(start_date, end_date):
-    """Generate a random date between two dates"""
-    time_between = end_date - start_date
-    days_between = time_between.days
-    random_days = random.randrange(days_between)
-    return start_date + timedelta(days=random_days)
+def reset_database():
+    """Reset PostgreSQL database - drop and recreate tables"""
+    with app.app_context():
+        try:
+            # Drop all tables
+            db.drop_all()
+            # Create all tables
+            db.create_all()
+            print("✅ Database reset successfully")
+        except Exception as e:
+            print(f"❌ Error resetting database: {e}")
+            raise
 
 def create_students(num_students=50):
     """Create students with realistic data"""
@@ -63,11 +70,11 @@ def create_students(num_students=50):
         
         # Generate unique email
         email = f"{first_name.lower()}.{last_name.lower()}@{random.choice(['university.edu', 'college.edu', 'student.edu'])}"
-        email = email.replace(" ", "")
+        email = email.replace(" ", "").replace("'", "")
         counter = 1
         while email in used_emails:
             email = f"{first_name.lower()}.{last_name.lower()}{counter}@{random.choice(['university.edu', 'college.edu', 'student.edu'])}"
-            email = email.replace(" ", "")
+            email = email.replace(" ", "").replace("'", "")
             counter += 1
         used_emails.add(email)
         
@@ -146,12 +153,12 @@ def allocate_rooms_randomly(students, rooms, num_to_allocate=30):
     max_attempts = 1000  # Prevent infinite loop
     attempts = 0
     
-    for student in students:
+    # Create a list of students that can be allocated
+    available_students = [s for s in students if s.id not in allocated_students]
+    
+    for student in available_students:
         if allocated_count >= num_to_allocate:
             break
-            
-        if student.id in allocated_students:
-            continue
             
         # Find an available room matching student's gender
         available_rooms = [
@@ -199,68 +206,88 @@ def allocate_rooms_randomly(students, rooms, num_to_allocate=30):
 
 def seed_database():
     """Main function to populate the database"""
-    print("🌱 Seeding database...")
+    print("🌱 Seeding PostgreSQL database...")
+    print("=" * 50)
     
     with app.app_context():
-        # Clear existing data
-        print("🗑️ Clearing existing data...")
-        db.session.query(Allocation).delete()
-        db.session.query(Student).delete()
-        db.session.query(Room).delete()
-        db.session.commit()
-        
-        # Create rooms (60 rooms)
-        print("🏠 Creating rooms...")
-        rooms = create_rooms()
-        db.session.add_all(rooms)
-        db.session.commit()
-        print(f"✅ Created {len(rooms)} rooms")
-        
-        # Create students (50 students)
-        print("👨‍🎓 Creating students...")
-        students = create_students(50)
-        db.session.add_all(students)
-        db.session.commit()
-        print(f"✅ Created {len(students)} students")
-        
-        # Randomly allocate rooms (approx 30 students)
-        print("🔑 Allocating rooms...")
-        allocations, allocated_count = allocate_rooms_randomly(students, rooms, 30)
-        db.session.add_all(allocations)
-        
-        # Update room and student records
-        for student in students:
-            db.session.add(student)
-        for room in rooms:
-            db.session.add(room)
-        
-        db.session.commit()
-        print(f"✅ Allocated {allocated_count} students to rooms")
-        
-        # Statistics
-        total_students = len(students)
-        allocated_students = sum(1 for s in students if s.allocated_room is not None)
-        unallocated_students = total_students - allocated_students
-        
-        print("\n📊 Database Statistics:")
-        print(f"   - Total Students: {total_students}")
-        print(f"   - Allocated Students: {allocated_students}")
-        print(f"   - Unallocated Students: {unallocated_students}")
-        print(f"   - Total Rooms: {len(rooms)}")
-        
-        # Count rooms by status
-        available_rooms = sum(1 for r in rooms if r.status == 'Available')
-        full_rooms = sum(1 for r in rooms if r.status == 'Full')
-        print(f"   - Available Rooms: {available_rooms}")
-        print(f"   - Full Rooms: {full_rooms}")
-        
-        # Count by gender
-        male_students = sum(1 for s in students if s.gender == 'Male')
-        female_students = sum(1 for s in students if s.gender == 'Female')
-        print(f"   - Male Students: {male_students}")
-        print(f"   - Female Students: {female_students}")
-        
-        print("\n🎯 Seeding complete!")
+        try:
+            # Reset database
+            print("🔄 Resetting database...")
+            reset_database()
+            
+            # Create rooms
+            print("🏠 Creating rooms...")
+            rooms = create_rooms()
+            db.session.add_all(rooms)
+            db.session.commit()
+            print(f"✅ Created {len(rooms)} rooms")
+            
+            # Create students
+            print("👨‍🎓 Creating students...")
+            students = create_students(50)
+            db.session.add_all(students)
+            db.session.commit()
+            print(f"✅ Created {len(students)} students")
+            
+            # Randomly allocate rooms
+            print("🔑 Allocating rooms...")
+            allocations, allocated_count = allocate_rooms_randomly(students, rooms, 30)
+            
+            if allocations:
+                db.session.add_all(allocations)
+            
+            # Update students and rooms
+            for student in students:
+                db.session.add(student)
+            for room in rooms:
+                db.session.add(room)
+            
+            db.session.commit()
+            print(f"✅ Allocated {allocated_count} students to rooms")
+            
+            # Statistics
+            total_students = len(students)
+            allocated_students = sum(1 for s in students if s.allocated_room is not None)
+            unallocated_students = total_students - allocated_students
+            
+            print("\n" + "=" * 50)
+            print("📊 Database Statistics:")
+            print("=" * 50)
+            print(f"   👥 Total Students: {total_students}")
+            print(f"   🏠 Allocated Students: {allocated_students}")
+            print(f"   🚫 Unallocated Students: {unallocated_students}")
+            print(f"   🏢 Total Rooms: {len(rooms)}")
+            
+            available_rooms = sum(1 for r in rooms if r.status == 'Available')
+            full_rooms = sum(1 for r in rooms if r.status == 'Full')
+            print(f"   🟢 Available Rooms: {available_rooms}")
+            print(f"   🔴 Full Rooms: {full_rooms}")
+            
+            male_students = sum(1 for s in students if s.gender == 'Male')
+            female_students = sum(1 for s in students if s.gender == 'Female')
+            print(f"   👨 Male Students: {male_students}")
+            print(f"   👩 Female Students: {female_students}")
+            
+            # Room type distribution
+            ac_rooms = sum(1 for r in rooms if r.room_type == 'AC')
+            non_ac_rooms = sum(1 for r in rooms if r.room_type == 'Non-AC')
+            print(f"   ❄️ AC Rooms: {ac_rooms}")
+            print(f"   🌡️ Non-AC Rooms: {non_ac_rooms}")
+            
+            # Capacity distribution
+            total_capacity = sum(r.capacity for r in rooms)
+            total_occupied = sum(r.occupied for r in rooms)
+            occupancy_rate = round((total_occupied / total_capacity * 100), 1) if total_capacity > 0 else 0
+            print(f"   📈 Occupancy Rate: {occupancy_rate}%")
+            
+            print("=" * 50)
+            print("\n🎯 Seeding complete!")
+            print("🚀 You can now run: python app.py")
+            
+        except Exception as e:
+            print(f"\n❌ Error seeding database: {str(e)}")
+            db.session.rollback()
+            raise
 
 if __name__ == '__main__':
     seed_database()
