@@ -232,7 +232,10 @@
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h3>🏠 HostelHub</h3>
+                <!-- <h3>🏠 HostelHub</h3> -->
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <h3>🏠 HostelHub</h3>
+                </a>
             </div>
             <div class="sidebar-menu">
                 <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
