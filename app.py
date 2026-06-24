@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 import sys
 import importlib.util
+from sqlalchemy import func
 
 # Fix for Python 3.14 compatibility - Monkey patch pkgutil
 import pkgutil
@@ -86,10 +87,27 @@ def index():
 def dashboard():
     total_students = Student.query.count()
     total_rooms = Room.query.count()
-    allocated_students = Student.query.filter(Student.allocated_room.isnot(None)).count()
+    
+    # Only count students with allocated_room not None and not empty
+    allocated_students = Student.query.filter(
+        Student.allocated_room.isnot(None),
+        Student.allocated_room != ''
+    ).count()
+    
     available_rooms = Room.query.filter_by(status='Available').count()
-    total_capacity = db.session.query(db.func.sum(Room.capacity)).scalar() or 0
-    total_occupied = db.session.query(db.func.sum(Room.occupied)).scalar() or 0
+    total_capacity = db.session.query(func.sum(Room.capacity)).scalar() or 0
+    total_occupied = db.session.query(func.sum(Room.occupied)).scalar() or 0
+    
+    # Prevent negative values
+    total_capacity = max(0, total_capacity)
+    total_occupied = max(0, total_occupied)
+    
+    # Calculate occupancy rate safely (prevents negative percentages)
+    occupancy_rate = 0
+    if total_capacity > 0:
+        occupancy_rate = round((total_occupied / total_capacity * 100), 1)
+        # Ensure it doesn't exceed 100%
+        occupancy_rate = min(100, occupancy_rate)
     
     stats = {
         'total_students': total_students,
@@ -98,12 +116,18 @@ def dashboard():
         'available_rooms': available_rooms,
         'total_capacity': total_capacity,
         'total_occupied': total_occupied,
-        'occupancy_rate': round((total_occupied / total_capacity * 100) if total_capacity > 0 else 0, 1)
+        'occupancy_rate': occupancy_rate
     }
     
-    recent_allocations = Allocation.query.order_by(Allocation.allocation_date.desc()).limit(5).all()
+    recent_allocations = Allocation.query.order_by(
+        Allocation.allocation_date.desc()
+    ).limit(5).all()
     
-    return render_template('dashboard.html', stats=stats, recent_allocations=recent_allocations)
+    return render_template(
+        'dashboard.html', 
+        stats=stats, 
+        recent_allocations=recent_allocations
+    )
 
 # Student CRUD
 @app.route('/students')
@@ -199,7 +223,7 @@ def delete_student(id):
         for allocation in allocations:
             room = Room.query.get(allocation.room_id)
             if room:
-                room.occupied -= 1
+                room.occupied = max(0, room.occupied - 1)
                 if room.occupied < room.capacity:
                     room.status = 'Available'
             db.session.delete(allocation)
@@ -212,6 +236,7 @@ def delete_student(id):
         flash(f'Error deleting student: {str(e)}', 'error')
     
     return redirect(url_for('students'))
+
 
 # Room CRUD
 @app.route('/rooms')
@@ -340,24 +365,38 @@ def allocate_room():
             flash('Invalid student or room!', 'error')
             return redirect(url_for('allocate_room'))
         
-        if student.allocated_room:
-            flash('Student already has a room allocated!', 'error')
+        # Check if student is already allocated (prevents duplicate allocation)
+        if student.allocated_room and student.allocated_room != '':
+            flash(f'Student {student.name} already has a room allocated!', 'error')
             return redirect(url_for('allocate_room'))
         
+        # Check room availability
         if room.occupied >= room.capacity:
             flash('Room is full!', 'error')
             return redirect(url_for('allocate_room'))
         
+        # Check gender compatibility
         if student.gender != room.gender:
             flash('Gender mismatch between student and room!', 'error')
             return redirect(url_for('allocate_room'))
         
+        # Check if room already has an active allocation (additional safety)
+        existing_allocation = Allocation.query.filter_by(
+            room_id=room_id,
+            status='Active'
+        ).count()
+        if existing_allocation >= room.capacity:
+            flash('Room is already fully occupied!', 'error')
+            return redirect(url_for('allocate_room'))
+        
         try:
+            # Create allocation
             allocation = Allocation(
                 student_id=student_id,
                 room_id=room_id
             )
             
+            # Update student and room
             student.allocated_room = room.room_number
             room.occupied += 1
             
@@ -373,8 +412,13 @@ def allocate_room():
             db.session.rollback()
             flash(f'Error allocating room: {str(e)}', 'error')
     
-    unallocated_students = Student.query.filter(Student.allocated_room.is_(None)).all()
-    available_rooms = Room.query.filter(Room.status.in_(['Available', 'Full'])).all()
+    # GET request - show allocation form
+    unallocated_students = Student.query.filter(
+        (Student.allocated_room.is_(None)) | (Student.allocated_room == '')
+    ).all()
+    available_rooms = Room.query.filter(
+        Room.status.in_(['Available', 'Full'])
+    ).all()
     
     return render_template('allocate_room.html', 
                          students=unallocated_students, 
@@ -392,7 +436,7 @@ def deallocate_room(allocation_id):
             student.allocated_room = None
         
         if room:
-            room.occupied -= 1
+            room.occupied = max(0, room.occupied - 1)  # Prevent negative
             if room.occupied < room.capacity:
                 room.status = 'Available'
         
@@ -405,6 +449,7 @@ def deallocate_room(allocation_id):
         flash(f'Error deallocating room: {str(e)}', 'error')
     
     return redirect(url_for('allocations'))
+
 
 # API endpoints for AJAX calls
 @app.route('/api/available-rooms/<gender>')
